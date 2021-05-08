@@ -50,7 +50,9 @@ namespace ProductManager
 
                 WriteLine("3. Delete Pizza");
 
-                WriteLine("4. Exit Application");
+                WriteLine("4. Update Pizza");
+
+                WriteLine("5. Exit Application");
 
                 CursorVisible = false;
 
@@ -62,23 +64,27 @@ namespace ProductManager
                 {
                     case ConsoleKey.D1:
 
-                        ListProducts();
+                        ListPizzas();
 
                         break;
 
                     case ConsoleKey.D2:
 
-                        AddProduct();
+                        AddPizza();
 
                         break;
 
                     case ConsoleKey.D3:
 
-                        DeleteProduct();
+                        DeletePizza();
 
                         break;
-
                     case ConsoleKey.D4:
+
+                        UpdatePizza();
+
+                        break;
+                    case ConsoleKey.D5:
 
                         applicationRunning = false;
 
@@ -90,7 +96,7 @@ namespace ProductManager
             } while (applicationRunning);
         }
 
-        private static void ListProducts()
+        private static void ListPizzas()
         {
             var response = httpClient.GetAsync("Pizzas")
                 .GetAwaiter()
@@ -112,7 +118,7 @@ namespace ProductManager
             ReadKey(true);
         }
 
-        private static void AddProduct()
+        private static void AddPizza()
         {
             CursorVisible = true;
 
@@ -148,7 +154,7 @@ namespace ProductManager
             Thread.Sleep(2000);
         }
 
-        private static void ListProductsWithinDelete()
+        private static void ListPizzasWithinDeleteAndUpdate()
         {
             var response = httpClient.GetAsync("Pizzas")
                 .GetAwaiter()
@@ -170,17 +176,17 @@ namespace ProductManager
             WriteLine(" ");
         }
 
-        private static void DeleteProduct()
+        private static void DeletePizza()
         {
-            ListProductsWithinDelete();
+            ListPizzasWithinDeleteAndUpdate();
 
             Write("Enter ID of Pizza You'd Like To Delete: ");
 
             CursorVisible = true;
 
-            string urlId = ReadLine();
+            string pizzaId = ReadLine();
 
-            var response = httpClient.DeleteAsync($"pizzas/{urlId}").Result;
+            var response = httpClient.DeleteAsync($"pizzas/{pizzaId}").Result;
 
             if (response.IsSuccessStatusCode)
             {
@@ -193,6 +199,102 @@ namespace ProductManager
 
             Thread.Sleep(2000);
         }
+
+        private static void UpdatePizza()
+        {
+            ListPizzasWithinDeleteAndUpdate();
+
+            Write("Choose Pizza by ID: ");
+
+            var pizzaId = ReadLine();
+
+            Clear();
+
+            var pizza = FetchProduct(pizzaId);
+
+            if (pizza != null)
+            {
+                WriteLine($"Pizza ID:             {pizza.Id}");
+                WriteLine($"Pizza Name:           {pizza.PizzaName}");
+                WriteLine($"Pizza Sizes:    {pizza.PizzaSizes}");
+                WriteLine($"Pizza Price:    {pizza.Price}");
+
+
+                WriteLine("- - - - - - - - - - - - - - - - - - - - - -");
+
+                CursorVisible = true;
+
+                Write("New Pizza Name: ");
+
+                var pizzaName = ReadLine();
+
+                Write("New Pizza Size/Sizes: ");
+
+                var pizzaSizes = ReadLine();
+
+                Write("New Pizza Price: ");
+
+                var price = decimal.Parse(ReadLine());
+
+                WriteLine("Do You Wish To Update The Following Pizza? [Y]es | [N]o");
+
+                ConsoleKeyInfo YesOrNo = ReadKey();
+
+                if(YesOrNo.Key == ConsoleKey.Y)
+                {
+                    var updatePizza = new Pizzas(pizza.Id, pizzaName, pizzaSizes, price);
+
+                    var serializePizza = JsonConvert.SerializeObject(updatePizza);
+
+                    var newStringContent = new StringContent(serializePizza, Encoding.UTF8, "application/json");
+
+                    var response = httpClient.PutAsync($"pizzas/{updatePizza.Id}", newStringContent).Result;
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Clear();
+
+                        WriteLine("Pizza Successfully Updated.");
+                    }
+                    else
+                    {
+                        Clear();
+
+                        WriteLine("Invalid data was input in the console. Please Try Again.");
+                    }
+                }
+                else if(YesOrNo.Key == ConsoleKey.N)
+                {
+                    Clear();
+
+                    WriteLine("Returning Back to Home Screen...");
+                }
+            }
+            else
+            {
+                WriteLine("Pizza ID Does not Exist.");
+            }
+
+            Thread.Sleep(2000);
+        }
+
+        // For Fetching Pizzas by ID
+        private static Pizzas FetchProduct(string urlSlug)
+        {
+            var response = httpClient.GetAsync($"pizzas/{urlSlug}").Result;
+
+            Pizzas pizza = null;
+
+            if (response.IsSuccessStatusCode)
+            {
+                var productAsJson = response.Content.ReadAsStringAsync().Result;
+
+                pizza = JsonConvert.DeserializeObject<Pizzas>(productAsJson);
+            }
+
+            return pizza;
+        }
+
 
         // Login Method
         private static string Login()
